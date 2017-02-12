@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">MoveIt</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="adapt_blank_frag">Inside AdaptFragment</string>
+    <string name="share_fragment_text">Inside ShareFragment</string>
+    <string name="clone_fragment_text">Inside CloneFragment</string>
+    <string name="share">Share</string>
+    <string name="send">Send</string>
+    <string name="receive">Receive</string>
+    <string name="qr_code_hint">Scan this QR code from sending device</string>
+    <string name="nothing_to_read">Nothing to read.</string>
+    <string name="no_camera_permission">No Camera Permissions</string>
+    <string name="ok">Ok</string>
+    <string name="low_storage_error">Low Storage Error</string>
+
+
+</resources>

@@ -1,0 +1,17 @@
+<resources>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+    <dimen name="title_margin_start">16dp</dimen>
+
+    <!--fancy_btn common dimensions-->
+    <dimen name="fancy_btn_width">50dp</dimen>
+    <dimen name="fancy_btn_height">30dp</dimen>
+    <dimen name="fancy_btn_text_size">20sp</dimen>
+    <dimen name="fancy_btn_border_width">2dp</dimen>
+    <dimen name="fancy_btn_padding_large">10dp</dimen>
+    <dimen name="fancy_btn_padding_small">7dp</dimen>
+    <dimen name="fancy_btn_radius">35dp</dimen>
+
+
+</resources>
