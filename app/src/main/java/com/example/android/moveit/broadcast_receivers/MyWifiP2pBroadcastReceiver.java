@@ -3,11 +3,13 @@ package com.example.android.moveit.broadcast_receivers;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 
 import com.example.android.moveit.adapters.MyWifiP2pAdapter;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
+import com.example.android.moveit.utilities.qr_code_related.QRCodeShower;
 
 /**
  * Created by Priyank on 10-02-2017.
@@ -42,7 +44,24 @@ public class MyWifiP2pBroadcastReceiver extends BroadcastReceiver {
             //Check whether it's a receiving side
             if(!isSendState){
                 //Generate a QR code if so.
+                WifiP2pDevice device = intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE);
+                String thisDeviceAddr = device.deviceAddress;
                 QRCodeManager qrCodeManager = QRCodeManager.getInstance(context);
+
+                //check whether 'context' is qrcodeshower
+                Class[] interfaces = context.getClass().getInterfaces();
+                boolean isQRCodeShower = false;
+                for (Class c : interfaces) {
+                    if (c.equals(QRCodeShower.class)) {
+                        isQRCodeShower = true;
+                        break;
+                    }
+                }
+                if (isQRCodeShower) {
+                    QRCodeShower qrCodeShower = (QRCodeShower) context;
+                    qrCodeShower.displayQRCode(qrCodeManager.generateQrCode(thisDeviceAddr, QRCodeManager.QR_WIDTH, QRCodeManager.QR_HEIGHT));
+                }
+
             }
         }
 

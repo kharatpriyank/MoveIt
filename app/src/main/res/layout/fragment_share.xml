@@ -8,6 +8,7 @@
         android:layout_width="wrap_content"
         android:layout_height="@dimen/activity_vertical_margin"
         android:layout_centerInParent="true" />
+
     <mehdi.sakout.fancybuttons.FancyButton
         android:id="@+id/sendBtn"
         android:layout_width="wrap_content"
@@ -20,8 +21,8 @@
         android:paddingTop="@dimen/fancy_btn_padding_small"
         android:text="@string/send"
         android:textSize="@dimen/fancy_btn_text_size"
-        fancy:fb_borderWidth="@dimen/fancy_btn_border_width"
         fancy:fb_borderColor="@color/colorBlueAccent"
+        fancy:fb_borderWidth="@dimen/fancy_btn_border_width"
         fancy:fb_defaultColor="@color/colorBluePrimary"
         fancy:fb_focusColor="@color/colorBlueDark"
         fancy:fb_iconPosition="left"
@@ -34,16 +35,16 @@
         android:id="@+id/receiveBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
         android:layout_below="@id/centerSpace"
+        android:layout_centerHorizontal="true"
         android:paddingBottom="@dimen/fancy_btn_padding_small"
         android:paddingLeft="@dimen/fancy_btn_padding_small"
         android:paddingRight="@dimen/fancy_btn_padding_large"
         android:paddingTop="@dimen/fancy_btn_padding_small"
         android:text="@string/receive"
         android:textSize="@dimen/fancy_btn_text_size"
-        fancy:fb_borderWidth="@dimen/fancy_btn_border_width"
         fancy:fb_borderColor="@color/colorDeepOrangeAccent"
+        fancy:fb_borderWidth="@dimen/fancy_btn_border_width"
         fancy:fb_defaultColor="@color/colorDeepOrangePrimary"
         fancy:fb_focusColor="@color/colorDeepOrangeDark"
         fancy:fb_iconPosition="left"
@@ -51,4 +52,12 @@
         fancy:fb_radius="@dimen/fancy_btn_radius"
         fancy:fb_textColor="@android:color/white"
         fancy:fb_textGravity="center_horizontal" />
+
+    <TextView
+        android:id="@+id/connectionStatus"
+        style="@style/DummyFragText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/sendBtn"
+        android:text="@string/connection_status" />
 </RelativeLayout>

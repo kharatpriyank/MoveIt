@@ -14,6 +14,7 @@
     <string name="no_camera_permission">No Camera Permissions</string>
     <string name="ok">Ok</string>
     <string name="low_storage_error">Low Storage Error</string>
+    <string name="connection_status">Not connected</string>
 
 
 </resources>

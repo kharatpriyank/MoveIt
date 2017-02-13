@@ -1,7 +1,6 @@
 package com.example.android.moveit.activities;
 
-import android.content.IntentFilter;
-import android.net.wifi.p2p.WifiP2pManager;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.TabLayout;
@@ -18,6 +17,8 @@ import com.example.android.moveit.broadcast_receivers.MyWifiP2pBroadcastReceiver
 import com.example.android.moveit.fragments.main_activity_fragments.AdaptFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.CloneFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.ShareFragment;
+import com.example.android.moveit.utilities.BrIntentFilterWrapper;
+import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,8 +45,9 @@ public class MainActivity extends AppCompatActivity {
     //other References
     private MyWifiP2pAdapter myWifiP2pAdapter;
     private MyWifiP2pBroadcastReceiver myWifiP2pBroadcastReceiver;
-    private IntentFilter wifiP2pFilter;
-
+    private BrIntentFilterWrapper brIntentFilterWrapper;
+    private MainActivityCommunicator mainActivityCommunicator;
+    private QRCodeManager qrCodeManager;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -65,17 +67,13 @@ public class MainActivity extends AppCompatActivity {
         shareFragment = new ShareFragment();
         cloneFragment = new CloneFragment();
         adaptFragment = new AdaptFragment();
+        mainActivityCommunicator = shareFragment;
         myPagerAdapter = new MyFragmentPagerAdapter(getSupportFragmentManager());
         myWifiP2pAdapter = MyWifiP2pAdapter.getInstance(this);
         myWifiP2pBroadcastReceiver = MyWifiP2pBroadcastReceiver.getInstance(myWifiP2pAdapter);
-
+        qrCodeManager = QRCodeManager.getInstance(this);
         //WIfiP2p IntentFilter
-        wifiP2pFilter = new IntentFilter();
-        wifiP2pFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-        wifiP2pFilter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
-        wifiP2pFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-        wifiP2pFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-        wifiP2pFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+        brIntentFilterWrapper = BrIntentFilterWrapper.getInstance();
     }
 
     @Override
@@ -87,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(myWifiP2pBroadcastReceiver,wifiP2pFilter);
+        registerReceiver(myWifiP2pBroadcastReceiver, brIntentFilterWrapper.wifiP2pFilter);
     }
 
 
@@ -95,6 +93,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         unbinder.unbind();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        String address = qrCodeManager.getQRCode(requestCode, resultCode, data);
+        mainActivityCommunicator.handleMessage(address);
+    }
+
+    public interface MainActivityCommunicator {
+        void handleMessage(String message);
     }
 
     private class MyFragmentPagerAdapter extends FragmentPagerAdapter {
@@ -127,5 +136,7 @@ public class MainActivity extends AppCompatActivity {
         public CharSequence getPageTitle(int position) {
             return titles.get(position);
         }
+
+
     }
 }

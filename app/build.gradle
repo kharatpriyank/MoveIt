@@ -47,6 +47,5 @@ dependencies {
     //Fancy buttons
     compile 'com.github.medyo:fancybuttons:1.8.3'
     compile 'com.android.support:multidex:1.0.1'
-    compile project(':barcode-utility-app')
     testCompile 'junit:junit:4.12'
 }

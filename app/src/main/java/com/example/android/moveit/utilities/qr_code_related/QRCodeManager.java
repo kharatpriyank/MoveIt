@@ -1,13 +1,15 @@
 package com.example.android.moveit.utilities.qr_code_related;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 
+import com.example.android.moveit.activities.BarcodeCaptureActivity;
 import com.example.android.moveit.utilities.M;
-import com.google.android.gms.vision.Frame;
+import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.vision.barcode.Barcode;
-import com.google.android.gms.vision.barcode.BarcodeDetector;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
@@ -17,6 +19,9 @@ import com.google.zxing.qrcode.QRCodeWriter;
  */
 
 public class QRCodeManager {
+    public static final int BARCODE_READER_REQUEST_CODE = 1;
+
+
     public static final int QR_WIDTH = 600;
     public static final int QR_HEIGHT = 600;
 
@@ -24,25 +29,10 @@ public class QRCodeManager {
     //Singleton class, since only one instance is needed throughout application.
     private static QRCodeManager instance;
     private QRCodeWriter qrCodeWriter;
-    private BarcodeDetector barcodeDetector;
     private Context context;
-    private Frame qrCodeFrame;
 
     private QRCodeManager() {
-         qrCodeWriter = new QRCodeWriter();
-
-    }
-
-    public void setBarcodeDetector(BarcodeDetector barcodeDetector) {
-        this.barcodeDetector = barcodeDetector;
-    }
-
-    public BarcodeDetector getBarcodeDetector() {
-        return barcodeDetector;
-    }
-
-    public void setContext(Context context) {
-        this.context = context;
+        qrCodeWriter = new QRCodeWriter();
 
     }
 
@@ -57,12 +47,14 @@ public class QRCodeManager {
             }
         }
         instance.setContext(context);
-        instance.setBarcodeDetector(new BarcodeDetector.Builder(context).
-                setBarcodeFormats(Barcode.QR_CODE).build());
+
         return instance;
     }
 
+    public void setContext(Context context) {
+        this.context = context;
 
+    }
 
     //QRCode generation logic
     public Bitmap generateQrCode(String contents, int width, int height) {
@@ -85,15 +77,28 @@ public class QRCodeManager {
     }
 
     //QRCode Detection Logic
-    public String getContents(Bitmap bitmap) {
-        String contents = null;
-        try {
+    public void startDetection(final Activity activity) {
+        Intent intent = new Intent(activity, BarcodeCaptureActivity.class);
+        activity.startActivityForResult(intent, BARCODE_READER_REQUEST_CODE);
+    }
 
-        } catch (Exception e) {
-            M.L(e.getMessage());
-        } finally {
-            return contents;
+    //get captured QR code
+    public String getQRCode(int requestCode, int resultCode, Intent data) {
+        String returnVal = null;
+        if (requestCode == BARCODE_READER_REQUEST_CODE) {
+            if (resultCode == CommonStatusCodes.SUCCESS) {
+                if (data != null) {
+                    Barcode barcode = data.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
+                    returnVal = barcode.displayValue;
+                    M.L("Address scanned : " + returnVal);
+                } else {
+                    M.L("Address not scanned");
+                }
+
+            }
+
         }
+        return returnVal;
     }
 }
 
