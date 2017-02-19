@@ -7,6 +7,7 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 
+import com.example.android.moveit.background_tasks.StartDiscoveryService;
 import com.example.android.moveit.utilities.M;
 
 import java.util.ArrayList;
@@ -17,8 +18,9 @@ import java.util.List;
  */
 
 //Singleton class
-public class MyWifiP2pAdapter {
-    private static MyWifiP2pAdapter instance;
+public class WifiP2pWrapper {
+    public static Boolean isListFound = false;
+    private static WifiP2pWrapper instance;
     public WifiP2pManager wifiP2pManager;
     public WifiP2pManager.Channel wifiP2pChannel;
     private WifiManager wifiManager;
@@ -28,7 +30,7 @@ public class MyWifiP2pAdapter {
     private List<WifiP2pDevice> wifiP2pDevices;
 
     //Private Constructor for singleton
-    private MyWifiP2pAdapter(final Context context) {
+    private WifiP2pWrapper(final Context context) {
         this.context = context;
         wifiP2pManager = (WifiP2pManager) context.getSystemService(Context.WIFI_P2P_SERVICE);
         wifiP2pChannel = wifiP2pManager.initialize(context, context.getMainLooper(), new WifiP2pManager.ChannelListener() {
@@ -41,16 +43,17 @@ public class MyWifiP2pAdapter {
     }
 
     //singleton generator
-    public static MyWifiP2pAdapter getInstance(Context context) {
+    public static WifiP2pWrapper getInstance(Context context) {
         if (instance == null) {
             //Making it Thread safe
-            synchronized (MyWifiP2pAdapter.class) {
+            synchronized (WifiP2pWrapper.class) {
                 if (instance == null) {
-                    instance = new MyWifiP2pAdapter(context);
+                    instance = new WifiP2pWrapper(context);
                     instance.wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
                 }
             }
         }
+        instance.setContext(context);
         return instance;
     }
 
@@ -58,8 +61,8 @@ public class MyWifiP2pAdapter {
         wifiManager.setWifiEnabled(isOn);
     }
 
-    public void setContext(Context context) {
-        this.context = context;
+    public boolean isWifiOn() {
+        return wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED;
     }
 
     public boolean isSendState() {
@@ -76,10 +79,13 @@ public class MyWifiP2pAdapter {
         boolean deviceFound = false;
         WifiP2pConfig connectDevice = new WifiP2pConfig();
         connectDevice.deviceAddress = deviceAddress;
-        if (wifiP2pManager != null) {
+        boolean isDiscovered = (StartDiscoveryService.getDiscoveryState() == StartDiscoveryService.DISCOVERED);
+        if (wifiP2pManager != null && isDiscovered) {
+            //request the discovered peers into wifiP2pDevices
+            wifiP2pManager.requestPeers(wifiP2pChannel, new MyPeerListListener());
             if (wifiP2pDevices != null) {
+                //check if the address matches one of'em.
                 for (WifiP2pDevice device : wifiP2pDevices) {
-                    //search in discovered lists
                     if (device.deviceAddress.equals(deviceAddress)) {
                         deviceFound = true;
                         break;
@@ -99,17 +105,32 @@ public class MyWifiP2pAdapter {
                         }
                     });
                 }
+            } else {
+                M.L("wifiP2pDevices list empty");
             }
+
+        } else {
+            M.L("connect Method : isDiscovered-->" + isDiscovered + " or  wifiP2pManager maybe null");
         }
         return isConnected;
     }
 
+    public Context getContext() {
+        return context;
+    }
+
+    public void setContext(Context context) {
+        this.context = context;
+    }
+
     //discover objects in wifiP2p environment
     public class MyPeerListListener implements WifiP2pManager.PeerListListener {
-
         @Override
         public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
             wifiP2pDevices = new ArrayList<>(wifiP2pDeviceList.getDeviceList());
+            isListFound = wifiP2pDeviceList != null;
         }
     }
+
+
 }

@@ -6,7 +6,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.adapters.MyWifiP2pAdapter;
+import com.example.android.moveit.adapters.WifiP2pWrapper;
 import com.example.android.moveit.broadcast_receivers.MyWifiP2pBroadcastReceiver;
 import com.example.android.moveit.utilities.BrIntentFilterWrapper;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
@@ -21,7 +21,7 @@ public class ReceiveActivity extends AppCompatActivity implements QRCodeShower {
     @BindView(R.id.qrCodeBox)
     ImageView imageView;
     private MyWifiP2pBroadcastReceiver wifiP2pBroadcastReceiver;
-    private MyWifiP2pAdapter wifiP2pAdapter;
+    private WifiP2pWrapper wifiP2pAdapter;
     private QRCodeManager qrCodeManager;
     private BrIntentFilterWrapper intentFilterWrapper;
 
@@ -36,7 +36,7 @@ public class ReceiveActivity extends AppCompatActivity implements QRCodeShower {
 
     private void init() {
         qrCodeManager = QRCodeManager.getInstance(this);
-        wifiP2pAdapter = MyWifiP2pAdapter.getInstance(this);
+        wifiP2pAdapter = WifiP2pWrapper.getInstance(this);
         intentFilterWrapper = BrIntentFilterWrapper.getInstance();
         wifiP2pBroadcastReceiver = MyWifiP2pBroadcastReceiver.getInstance(wifiP2pAdapter);
     }

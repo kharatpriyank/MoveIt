@@ -37,7 +37,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".activities.BarcodeCaptureActivity" />
-        <activity android:name=".activities.ReceiveActivity"></activity>
+        <activity android:name=".activities.ReceiveActivity" />
+
+        <service android:name=".background_tasks.StartDiscoveryService" />
     </application>
 
 </manifest>

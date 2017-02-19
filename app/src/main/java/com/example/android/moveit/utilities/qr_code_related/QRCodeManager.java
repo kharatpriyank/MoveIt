@@ -1,6 +1,5 @@
 package com.example.android.moveit.utilities.qr_code_related;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,8 +19,6 @@ import com.google.zxing.qrcode.QRCodeWriter;
 
 public class QRCodeManager {
     public static final int BARCODE_READER_REQUEST_CODE = 1;
-
-
     public static final int QR_WIDTH = 600;
     public static final int QR_HEIGHT = 600;
 
@@ -74,12 +71,6 @@ public class QRCodeManager {
         } finally {
             return bitmap;
         }
-    }
-
-    //QRCode Detection Logic
-    public void startDetection(final Activity activity) {
-        Intent intent = new Intent(activity, BarcodeCaptureActivity.class);
-        activity.startActivityForResult(intent, BARCODE_READER_REQUEST_CODE);
     }
 
     //get captured QR code

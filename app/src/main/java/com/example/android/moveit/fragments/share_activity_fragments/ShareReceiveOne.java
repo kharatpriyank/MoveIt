@@ -1,7 +1,7 @@
 package com.example.android.moveit.fragments.share_activity_fragments;
 
 
-import android.content.Context;
+import android.app.Activity;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -11,7 +11,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.adapters.MyWifiP2pAdapter;
+import com.example.android.moveit.adapters.WifiP2pWrapper;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -25,8 +25,8 @@ public class ShareReceiveOne extends Fragment {
     @BindView(R.id.qrCodeBox)
     ImageView qrCodeBox;
 
-    private Context context;
-    private MyWifiP2pAdapter wifiP2pAdapter;
+    private Activity context;
+    private WifiP2pWrapper wifiP2pAdapter;
     public ShareReceiveOne() {
         // Required empty public constructor
     }
@@ -35,7 +35,7 @@ public class ShareReceiveOne extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         context = getActivity();
-        wifiP2pAdapter = MyWifiP2pAdapter.getInstance(context);
+        wifiP2pAdapter = WifiP2pWrapper.getInstance(context);
     }
 
     @Override
