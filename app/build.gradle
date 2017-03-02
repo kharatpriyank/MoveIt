@@ -16,6 +16,9 @@ android {
         supportLibVersion = '24.0.0'
         // variable that can be referenced to keep support libs consistent
     }
+    packagingOptions {
+        exclude 'META-INF/rxjava.properties'
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -48,4 +51,21 @@ dependencies {
     compile 'com.github.medyo:fancybuttons:1.8.3'
     compile 'com.android.support:multidex:1.0.1'
     testCompile 'junit:junit:4.12'
+
+    //RxJava
+    compile 'io.reactivex.rxjava2:rxjava:2.0.1'
+    compile 'io.reactivex.rxjava2:rxandroid:2.0.1'
+
+    //RxAndroid bindings
+    compile 'com.jakewharton.rxbinding:rxbinding:1.0.0'
+    compile 'com.jakewharton.rxbinding:rxbinding-support-v4:1.0.0'
+    compile 'com.jakewharton.rxbinding:rxbinding-appcompat-v7:1.0.0'
+    compile 'com.jakewharton.rxbinding:rxbinding-design:1.0.0'
+    compile 'com.jakewharton.rxbinding:rxbinding-recyclerview-v7:1.0.0'
+    compile 'com.jakewharton.rxbinding:rxbinding-leanback-v17:1.0.0'
+
+    //file picker
+    compile 'com.nononsenseapps:filepicker:4.0.0'
+
+
 }

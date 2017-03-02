@@ -7,7 +7,6 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 
-import com.example.android.moveit.background_tasks.StartDiscoveryService;
 import com.example.android.moveit.utilities.M;
 
 import java.util.ArrayList;
@@ -19,16 +18,13 @@ import java.util.List;
 
 //Singleton class
 public class WifiP2pWrapper {
-    public static Boolean isListFound = false;
     private static WifiP2pWrapper instance;
     public WifiP2pManager wifiP2pManager;
     public WifiP2pManager.Channel wifiP2pChannel;
     private WifiManager wifiManager;
     private boolean isSendState, isConnected;
     private Context context;
-    private WifiP2pManager.PeerListListener myPeerListener;
-    private List<WifiP2pDevice> wifiP2pDevices;
-
+    private MyPeersListWrapper myPeerListWrapper;
     //Private Constructor for singleton
     private WifiP2pWrapper(final Context context) {
         this.context = context;
@@ -39,7 +35,7 @@ public class WifiP2pWrapper {
                 M.L("WifiP2pManager init not completed.");
             }
         });
-        myPeerListener = new MyPeerListListener();
+        myPeerListWrapper = new MyPeersListWrapper();
     }
 
     //singleton generator
@@ -73,44 +69,32 @@ public class WifiP2pWrapper {
         isSendState = sendState;
     }
 
-    //connect to a device
-    public boolean connect(final String deviceAddress) {
-        isConnected = false;
-        boolean deviceFound = false;
-        WifiP2pConfig connectDevice = new WifiP2pConfig();
-        connectDevice.deviceAddress = deviceAddress;
-        boolean isDiscovered = (StartDiscoveryService.getDiscoveryState() == StartDiscoveryService.DISCOVERED);
-        if (wifiP2pManager != null && isDiscovered) {
-            //request the discovered peers into wifiP2pDevices
-            wifiP2pManager.requestPeers(wifiP2pChannel, new MyPeerListListener());
-            if (wifiP2pDevices != null) {
-                //check if the address matches one of'em.
-                for (WifiP2pDevice device : wifiP2pDevices) {
-                    if (device.deviceAddress.equals(deviceAddress)) {
-                        deviceFound = true;
-                        break;
+    public boolean connect(String address) {
+        if (myPeerListWrapper.wifiP2pDevices != null) {
+            if (myPeerListWrapper.isDeviceInList(address)) {
+                WifiP2pConfig config = new WifiP2pConfig();
+                config.deviceAddress = address;
+                wifiP2pManager.connect(wifiP2pChannel, config, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        isConnected = true;
+                        M.L("Connection established");
                     }
-                }
-                if (deviceFound) {
-                    wifiP2pManager.connect(wifiP2pChannel, connectDevice, new WifiP2pManager.ActionListener() {
-                        @Override
-                        public void onSuccess() {
-                            M.L("Connected to " + deviceAddress);
-                            isConnected = true;
-                        }
 
-                        @Override
-                        public void onFailure(int i) {
-                            M.L("Not able to connect to " + deviceAddress);
+                    @Override
+                    public void onFailure(int i) {
+                        M.L("Cannot connect:Connect failure");
+                        if (i == WifiP2pManager.P2P_UNSUPPORTED) {
+                            M.L("P2p Unsupported, connection failed");
+                        } else {
+                            M.L("P2p connect error : " + (i == WifiP2pManager.ERROR ? "Error" : "Busy"));
                         }
-                    });
-                }
+                        isConnected = false;
+                    }
+                });
             } else {
-                M.L("wifiP2pDevices list empty");
+                M.L("Device is not in list.");
             }
-
-        } else {
-            M.L("connect Method : isDiscovered-->" + isDiscovered + " or  wifiP2pManager maybe null");
         }
         return isConnected;
     }
@@ -123,14 +107,60 @@ public class WifiP2pWrapper {
         this.context = context;
     }
 
-    //discover objects in wifiP2p environment
-    public class MyPeerListListener implements WifiP2pManager.PeerListListener {
-        @Override
-        public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-            wifiP2pDevices = new ArrayList<>(wifiP2pDeviceList.getDeviceList());
-            isListFound = wifiP2pDeviceList != null;
-        }
+    public MyPeersListWrapper getMyPeerListWrapper() {
+        return myPeerListWrapper;
     }
 
+    //start disocvery asynchronuously
+    public void startDiscovery() {
+        wifiP2pManager.discoverPeers(wifiP2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                M.L("Success in enabling discovery");
+            }
 
+            @Override
+            public void onFailure(int i) {
+                if (i == WifiP2pManager.BUSY || i == WifiP2pManager.ERROR) {
+                    M.L("Failure :Trying to discover peers again");
+                    wifiP2pManager.discoverPeers(wifiP2pChannel, this);
+                }
+            }
+        });
+
+
+    }
+
+    //Wrapper to wrap wifiP2pDevices' changes
+    public class MyPeersListWrapper {
+        private List<WifiP2pDevice> wifiP2pDevices;
+        private WifiP2pManager.PeerListListener myPeerListListener = new WifiP2pManager.PeerListListener() {
+
+            @Override
+            public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
+                MyPeersListWrapper.this.wifiP2pDevices = new ArrayList(wifiP2pDeviceList.getDeviceList());
+                M.L("PeersListListener called, List Status :  " + (wifiP2pDeviceList != null));
+            }
+        };
+
+        private MyPeersListWrapper() {
+
+        }
+
+        public boolean isDeviceInList(String address) {
+            for (WifiP2pDevice device : wifiP2pDevices) {
+                if (address.equals(device.deviceAddress))
+                    return true;
+            }
+            return false;
+        }
+
+        public List<WifiP2pDevice> getWifiP2pDevices() {
+            return wifiP2pDevices;
+        }
+
+        public WifiP2pManager.PeerListListener getMyPeerListListener() {
+            return myPeerListListener;
+        }
+    }
 }

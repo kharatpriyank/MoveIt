@@ -53,11 +53,5 @@
         fancy:fb_textColor="@android:color/white"
         fancy:fb_textGravity="center_horizontal" />
 
-    <TextView
-        android:id="@+id/connectionStatus"
-        style="@style/DummyFragText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/sendBtn"
-        android:text="@string/connection_status" />
+
 </RelativeLayout>

@@ -13,7 +13,6 @@ import android.support.v7.widget.Toolbar;
 
 import com.example.android.moveit.R;
 import com.example.android.moveit.adapters.WifiP2pWrapper;
-import com.example.android.moveit.background_tasks.StartDiscoveryService;
 import com.example.android.moveit.broadcast_receivers.MyWifiP2pBroadcastReceiver;
 import com.example.android.moveit.fragments.main_activity_fragments.AdaptFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.CloneFragment;
@@ -49,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private MyWifiP2pBroadcastReceiver myWifiP2pBroadcastReceiver;
     private BrIntentFilterWrapper brIntentFilterWrapper;
     private QRCodeManager qrCodeManager;
-    private Intent detectPeerServiceIntent;
+    // private Intent detectPeerServiceIntent;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -62,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         myPagerAdapter.addFragment(cloneFragment, CloneFragment.TAG);
         myViewPager.setAdapter(myPagerAdapter);
         myTabLayout.setupWithViewPager(myViewPager);
-        startService(detectPeerServiceIntent);//start discovery
+        //  startService(detectPeerServiceIntent);//start discovery
     }
 
     private void init() {
@@ -77,7 +76,8 @@ public class MainActivity extends AppCompatActivity {
         qrCodeManager = QRCodeManager.getInstance(this);
         //WIfiP2p IntentFilter
         brIntentFilterWrapper = BrIntentFilterWrapper.getInstance();
-        detectPeerServiceIntent = new Intent(this, StartDiscoveryService.class);
+        wifiP2PWrapper.setWifiStatus(true);
+        //  detectPeerServiceIntent = new Intent(this, StartDiscoveryService.class);
     }
 
     @Override
