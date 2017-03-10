@@ -1,14 +1,16 @@
-package com.example.android.moveit.adapters;
+package com.example.android.moveit.wifi_related;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
+import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 
 import com.example.android.moveit.utilities.M;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +27,9 @@ public class WifiP2pWrapper {
     private boolean isSendState, isConnected;
     private Context context;
     private MyPeersListWrapper myPeerListWrapper;
+    private MyWifiP2pConnectionInfoListener connectionInfoListener;
+    private InetAddress groupOwnerAddress;
+
     //Private Constructor for singleton
     private WifiP2pWrapper(final Context context) {
         this.context = context;
@@ -36,6 +41,7 @@ public class WifiP2pWrapper {
             }
         });
         myPeerListWrapper = new MyPeersListWrapper();
+        connectionInfoListener = new MyWifiP2pConnectionInfoListener();
     }
 
     //singleton generator
@@ -127,8 +133,18 @@ public class WifiP2pWrapper {
                 }
             }
         });
+    }
 
+    public MyWifiP2pConnectionInfoListener getConnectionInfoListener() {
+        return connectionInfoListener;
+    }
 
+    public boolean isGroupOwnerAddressPresent() {
+        return (groupOwnerAddress != null);
+    }
+
+    public InetAddress getGroupOwnerAddress() {
+        return groupOwnerAddress;
     }
 
     //Wrapper to wrap wifiP2pDevices' changes
@@ -139,7 +155,9 @@ public class WifiP2pWrapper {
             @Override
             public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
                 MyPeersListWrapper.this.wifiP2pDevices = new ArrayList(wifiP2pDeviceList.getDeviceList());
-                M.L("PeersListListener called, List Status :  " + (wifiP2pDeviceList != null));
+                for (WifiP2pDevice temp : wifiP2pDevices) {
+                    M.L("PeerListeners device : " + temp.deviceAddress + " Is Group owner : " + temp.isGroupOwner());
+                }
             }
         };
 
@@ -149,8 +167,10 @@ public class WifiP2pWrapper {
 
         public boolean isDeviceInList(String address) {
             for (WifiP2pDevice device : wifiP2pDevices) {
-                if (address.equals(device.deviceAddress))
+                if (address.equals(device.deviceAddress)) {
+                    M.L("Device matched : " + address);
                     return true;
+                }
             }
             return false;
         }
@@ -163,4 +183,22 @@ public class WifiP2pWrapper {
             return myPeerListListener;
         }
     }
+
+    //Collect info after connection is established.
+    public class MyWifiP2pConnectionInfoListener implements WifiP2pManager.ConnectionInfoListener {
+        private MyWifiP2pConnectionInfoListener connectionInfoListener;
+
+        private MyWifiP2pConnectionInfoListener() {
+            //private constructor
+        }
+
+        @Override
+        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
+            groupOwnerAddress = wifiP2pInfo.groupOwnerAddress;
+            M.L("ConnectionInfoListener : " + groupOwnerAddress.toString());
+
+        }
+
+    }
+
 }

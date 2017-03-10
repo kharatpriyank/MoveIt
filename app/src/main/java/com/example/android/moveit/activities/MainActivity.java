@@ -12,7 +12,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.adapters.WifiP2pWrapper;
 import com.example.android.moveit.broadcast_receivers.MyWifiP2pBroadcastReceiver;
 import com.example.android.moveit.fragments.main_activity_fragments.AdaptFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.CloneFragment;
@@ -20,6 +19,7 @@ import com.example.android.moveit.fragments.main_activity_fragments.ShareFragmen
 import com.example.android.moveit.utilities.BrIntentFilterWrapper;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
+import com.example.android.moveit.wifi_related.WifiP2pWrapper;
 
 import java.util.ArrayList;
 import java.util.List;

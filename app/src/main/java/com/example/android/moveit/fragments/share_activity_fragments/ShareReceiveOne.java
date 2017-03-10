@@ -11,7 +11,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.adapters.WifiP2pWrapper;
+import com.example.android.moveit.wifi_related.WifiP2pWrapper;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
