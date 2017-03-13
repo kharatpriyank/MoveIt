@@ -11,6 +11,9 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
+        jackOptions {
+            enabled true
+        }
     }
     ext {
         supportLibVersion = '24.0.0'
@@ -24,6 +27,11 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+
+    compileOptions {
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
     }
 }
 
@@ -55,14 +63,6 @@ dependencies {
     //RxJava
     compile 'io.reactivex.rxjava2:rxjava:2.0.1'
     compile 'io.reactivex.rxjava2:rxandroid:2.0.1'
-
-    //RxAndroid bindings
-    compile 'com.jakewharton.rxbinding:rxbinding:1.0.0'
-    compile 'com.jakewharton.rxbinding:rxbinding-support-v4:1.0.0'
-    compile 'com.jakewharton.rxbinding:rxbinding-appcompat-v7:1.0.0'
-    compile 'com.jakewharton.rxbinding:rxbinding-design:1.0.0'
-    compile 'com.jakewharton.rxbinding:rxbinding-recyclerview-v7:1.0.0'
-    compile 'com.jakewharton.rxbinding:rxbinding-leanback-v17:1.0.0'
 
     //file picker
     compile 'com.nononsenseapps:filepicker:4.0.0'

@@ -12,13 +12,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.broadcast_receivers.MyWifiP2pBroadcastReceiver;
 import com.example.android.moveit.fragments.main_activity_fragments.AdaptFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.CloneFragment;
 import com.example.android.moveit.fragments.main_activity_fragments.ShareFragment;
-import com.example.android.moveit.utilities.BrIntentFilterWrapper;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
+import com.example.android.moveit.wifi_related.BrIntentFilterWrapper;
 import com.example.android.moveit.wifi_related.WifiP2pWrapper;
 
 import java.util.ArrayList;
@@ -26,6 +25,7 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.Unbinder;
+import io.reactivex.Observable;
 
 import static butterknife.ButterKnife.bind;
 
@@ -45,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
 
     //other References
     private WifiP2pWrapper wifiP2PWrapper;
-    private MyWifiP2pBroadcastReceiver myWifiP2pBroadcastReceiver;
     private BrIntentFilterWrapper brIntentFilterWrapper;
     private QRCodeManager qrCodeManager;
+    private Observable<Intent> brObservable;
     // private Intent detectPeerServiceIntent;
 
     @Override
@@ -61,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
         myPagerAdapter.addFragment(cloneFragment, CloneFragment.TAG);
         myViewPager.setAdapter(myPagerAdapter);
         myTabLayout.setupWithViewPager(myViewPager);
-        //  startService(detectPeerServiceIntent);//start discovery
     }
 
     private void init() {
@@ -72,24 +71,9 @@ public class MainActivity extends AppCompatActivity {
         adaptFragment = new AdaptFragment();
         myPagerAdapter = new MyFragmentPagerAdapter(getSupportFragmentManager());
         wifiP2PWrapper = WifiP2pWrapper.getInstance(this);
-        myWifiP2pBroadcastReceiver = MyWifiP2pBroadcastReceiver.getInstance(wifiP2PWrapper);
+
         qrCodeManager = QRCodeManager.getInstance(this);
-        //WIfiP2p IntentFilter
-        brIntentFilterWrapper = BrIntentFilterWrapper.getInstance();
         wifiP2PWrapper.setWifiStatus(true);
-        //  detectPeerServiceIntent = new Intent(this, StartDiscoveryService.class);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        unregisterReceiver(myWifiP2pBroadcastReceiver);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(myWifiP2pBroadcastReceiver, brIntentFilterWrapper.wifiP2pFilter);
     }
 
 

@@ -1,4 +1,4 @@
-package com.example.android.moveit.utilities;
+package com.example.android.moveit.wifi_related;
 
 import android.content.IntentFilter;
 import android.net.wifi.p2p.WifiP2pManager;

@@ -1,6 +1,7 @@
 package com.example.android.moveit.wifi_related;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -10,9 +11,12 @@ import android.net.wifi.p2p.WifiP2pManager;
 
 import com.example.android.moveit.utilities.M;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 
 /**
  * Created by Priyank on 10-02-2017.
@@ -20,15 +24,20 @@ import java.util.List;
 
 //Singleton class
 public class WifiP2pWrapper {
+    public static final String DISCOVERY_STATE_DISCOVERY_STARTED = "discovery_started";
+    public static final String DISCOVERY_STATE_DISCOVERY_NOT_STARTED = "discovered_not_started";
+
     private static WifiP2pWrapper instance;
     public WifiP2pManager wifiP2pManager;
     public WifiP2pManager.Channel wifiP2pChannel;
     private WifiManager wifiManager;
-    private boolean isSendState, isConnected;
+    private boolean isSendState;
     private Context context;
-    private MyPeersListWrapper myPeerListWrapper;
-    private MyWifiP2pConnectionInfoListener connectionInfoListener;
-    private InetAddress groupOwnerAddress;
+    private Observable<Intent> wifiP2pBRObservable;
+    private Observable<String> discoveryObservable;
+    private Observable<List<WifiP2pDevice>> peersListObservable;
+    private Observable<WifiP2pInfo> wifiP2pConnectionObservable;
+    private List<WifiP2pDevice> wifiP2pDevices;
 
     //Private Constructor for singleton
     private WifiP2pWrapper(final Context context) {
@@ -37,11 +46,58 @@ public class WifiP2pWrapper {
         wifiP2pChannel = wifiP2pManager.initialize(context, context.getMainLooper(), new WifiP2pManager.ChannelListener() {
             @Override
             public void onChannelDisconnected() {
-                M.L("WifiP2pManager init not completed.");
+                M.L("WifiP2pManager channel Disconnected.");
             }
         });
-        myPeerListWrapper = new MyPeersListWrapper();
-        connectionInfoListener = new MyWifiP2pConnectionInfoListener();
+        wifiP2pBRObservable = RxBroadcastReceiver.create(context,
+                BrIntentFilterWrapper.getInstance().wifiP2pFilter);
+        discoveryObservable = Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> e) throws Exception {
+                wifiP2pManager.discoverPeers(wifiP2pChannel, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        M.L("Inside DiscoveryObservable : " + DISCOVERY_STATE_DISCOVERY_STARTED);
+                        e.onNext(DISCOVERY_STATE_DISCOVERY_STARTED);
+
+                    }
+
+                    @Override
+                    public void onFailure(int i) {
+                        M.L("Inside DiscoveryObservable : " + DISCOVERY_STATE_DISCOVERY_NOT_STARTED);
+                        wifiP2pManager.discoverPeers(wifiP2pChannel, this);
+                    }
+                });
+            }
+        });
+        peersListObservable = Observable.create(new ObservableOnSubscribe<List<WifiP2pDevice>>() {
+            @Override
+            public void subscribe(ObservableEmitter<List<WifiP2pDevice>> e) throws Exception {
+                wifiP2pManager.requestPeers(wifiP2pChannel, new WifiP2pManager.PeerListListener() {
+                    @Override
+                    public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
+                        List<WifiP2pDevice> wifiP2pDevices
+                                = new ArrayList<WifiP2pDevice>(wifiP2pDeviceList.getDeviceList());
+                        M.L("Inside PeersListObservable : List changed");
+                        e.onNext(wifiP2pDevices);
+                    }
+                });
+            }
+        });
+        wifiP2pConnectionObservable = Observable.create(new ObservableOnSubscribe<WifiP2pInfo>() {
+            @Override
+            public void subscribe(ObservableEmitter<WifiP2pInfo> e) throws Exception {
+                wifiP2pManager.requestConnectionInfo(wifiP2pChannel, new WifiP2pManager.ConnectionInfoListener() {
+                    @Override
+                    public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
+                        M.L("Inside ConnectionInfoObservable : connection changed");
+                        e.onNext(wifiP2pInfo);
+                    }
+                });
+            }
+        });
+
+
     }
 
     //singleton generator
@@ -59,10 +115,47 @@ public class WifiP2pWrapper {
         return instance;
     }
 
+    public void connect(String address) {
+        if ((wifiP2pDevices != null) && (!wifiP2pDevices.isEmpty())) {
+            boolean isDeviceInList = false;
+            for (WifiP2pDevice wifiP2pDevice : wifiP2pDevices) {
+                if (wifiP2pDevice.deviceAddress.equals(address))
+                    isDeviceInList = true;
+            }
+            if (isDeviceInList) {
+                WifiP2pConfig wifiP2pConfig = new WifiP2pConfig();
+                wifiP2pConfig.deviceAddress = address;
+                wifiP2pManager.connect(wifiP2pChannel, wifiP2pConfig, new WifiP2pManager.ActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        //ConnectionInfoListener will notify us , no need to go ahead here.
+                        M.L("Inside connect Method : Connection successfull");
+                    }
+
+                    @Override
+                    public void onFailure(int i) {
+                        M.L("Inside Connect method : Connection Unsuccessfull");
+                    }
+                });
+            } else {
+                M.L("Inside Connect Method : Device not in the peer list.");
+            }
+        } else {
+            M.L("Inside Connect Method : Peer devices not discovered");
+        }
+    }
+
+
+    //Setters
     public void setWifiStatus(boolean isOn) {
         wifiManager.setWifiEnabled(isOn);
     }
 
+    public void setContext(Context context) {
+        this.context = context;
+    }
+
+    //Getters
     public boolean isWifiOn() {
         return wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED;
     }
@@ -75,130 +168,29 @@ public class WifiP2pWrapper {
         isSendState = sendState;
     }
 
-    public boolean connect(String address) {
-        if (myPeerListWrapper.wifiP2pDevices != null) {
-            if (myPeerListWrapper.isDeviceInList(address)) {
-                WifiP2pConfig config = new WifiP2pConfig();
-                config.deviceAddress = address;
-                wifiP2pManager.connect(wifiP2pChannel, config, new WifiP2pManager.ActionListener() {
-                    @Override
-                    public void onSuccess() {
-                        isConnected = true;
-                        M.L("Connection established");
-                    }
-
-                    @Override
-                    public void onFailure(int i) {
-                        M.L("Cannot connect:Connect failure");
-                        if (i == WifiP2pManager.P2P_UNSUPPORTED) {
-                            M.L("P2p Unsupported, connection failed");
-                        } else {
-                            M.L("P2p connect error : " + (i == WifiP2pManager.ERROR ? "Error" : "Busy"));
-                        }
-                        isConnected = false;
-                    }
-                });
-            } else {
-                M.L("Device is not in list.");
-            }
-        }
-        return isConnected;
+    public Observable<Intent> getWifiP2pBRObservable() {
+        return wifiP2pBRObservable;
     }
 
-    public Context getContext() {
-        return context;
+    public Observable<String> getDiscoveryObservable() {
+        return discoveryObservable;
     }
 
-    public void setContext(Context context) {
-        this.context = context;
+    public Observable<WifiP2pInfo> getWifiP2pConnectionObservable() {
+        return wifiP2pConnectionObservable;
     }
 
-    public MyPeersListWrapper getMyPeerListWrapper() {
-        return myPeerListWrapper;
+    public Observable<List<WifiP2pDevice>> getPeersListObservable() {
+        return peersListObservable;
     }
 
-    //start disocvery asynchronuously
-    public void startDiscovery() {
-        wifiP2pManager.discoverPeers(wifiP2pChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                M.L("Success in enabling discovery");
-            }
-
-            @Override
-            public void onFailure(int i) {
-                if (i == WifiP2pManager.BUSY || i == WifiP2pManager.ERROR) {
-                    M.L("Failure :Trying to discover peers again");
-                    wifiP2pManager.discoverPeers(wifiP2pChannel, this);
-                }
-            }
-        });
+    public List<WifiP2pDevice> getWifiP2pDevices() {
+        return wifiP2pDevices;
     }
 
-    public MyWifiP2pConnectionInfoListener getConnectionInfoListener() {
-        return connectionInfoListener;
+    public void setWifiP2pDevices(List<WifiP2pDevice> wifiP2pDevices) {
+        this.wifiP2pDevices = wifiP2pDevices;
     }
 
-    public boolean isGroupOwnerAddressPresent() {
-        return (groupOwnerAddress != null);
-    }
-
-    public InetAddress getGroupOwnerAddress() {
-        return groupOwnerAddress;
-    }
-
-    //Wrapper to wrap wifiP2pDevices' changes
-    public class MyPeersListWrapper {
-        private List<WifiP2pDevice> wifiP2pDevices;
-        private WifiP2pManager.PeerListListener myPeerListListener = new WifiP2pManager.PeerListListener() {
-
-            @Override
-            public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-                MyPeersListWrapper.this.wifiP2pDevices = new ArrayList(wifiP2pDeviceList.getDeviceList());
-                for (WifiP2pDevice temp : wifiP2pDevices) {
-                    M.L("PeerListeners device : " + temp.deviceAddress + " Is Group owner : " + temp.isGroupOwner());
-                }
-            }
-        };
-
-        private MyPeersListWrapper() {
-
-        }
-
-        public boolean isDeviceInList(String address) {
-            for (WifiP2pDevice device : wifiP2pDevices) {
-                if (address.equals(device.deviceAddress)) {
-                    M.L("Device matched : " + address);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public List<WifiP2pDevice> getWifiP2pDevices() {
-            return wifiP2pDevices;
-        }
-
-        public WifiP2pManager.PeerListListener getMyPeerListListener() {
-            return myPeerListListener;
-        }
-    }
-
-    //Collect info after connection is established.
-    public class MyWifiP2pConnectionInfoListener implements WifiP2pManager.ConnectionInfoListener {
-        private MyWifiP2pConnectionInfoListener connectionInfoListener;
-
-        private MyWifiP2pConnectionInfoListener() {
-            //private constructor
-        }
-
-        @Override
-        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-            groupOwnerAddress = wifiP2pInfo.groupOwnerAddress;
-            M.L("ConnectionInfoListener : " + groupOwnerAddress.toString());
-
-        }
-
-    }
 
 }

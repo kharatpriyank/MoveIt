@@ -3,7 +3,11 @@ package com.example.android.moveit.fragments.main_activity_fragments;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pInfo;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -21,31 +25,26 @@ import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
 import com.example.android.moveit.wifi_related.WifiP2pWrapper;
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.vision.barcode.Barcode;
-import com.jakewharton.rxbinding.view.RxView;
 import com.nononsenseapps.filepicker.FilePickerActivity;
 
 import java.io.File;
+import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
 import io.reactivex.Observable;
-import io.reactivex.ObservableEmitter;
-import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 import mehdi.sakout.fancybuttons.FancyButton;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
 
 import static android.app.Activity.RESULT_OK;
-import static android.app.ProgressDialog.STYLE_SPINNER;
-import static rx.schedulers.Schedulers.io;
 
 /**
  * A simple {@link Fragment} subclass.
  */
-public class ShareFragment extends Fragment implements FileTasksWrapper.ProgressShower {
+public class ShareFragment extends Fragment {
     public static final String TAG = "Share";
     //View related regerences
     Unbinder unbinder;
@@ -61,6 +60,11 @@ public class ShareFragment extends Fragment implements FileTasksWrapper.Progress
     private WifiP2pWrapper wifiP2PWrapper;
     private QRCodeManager qrCodeManager;
     private FileTasksWrapper fileTasksWrapper;
+    //Observables
+    private Observable<String> discoveryObservable;
+    private Observable<List<WifiP2pDevice>> peersListObservable;
+    private Observable<WifiP2pInfo> connectionObservable;
+    private Observable<Intent> brObservable;
 
 
     public ShareFragment() {
@@ -72,11 +76,47 @@ public class ShareFragment extends Fragment implements FileTasksWrapper.Progress
         super.onActivityCreated(savedInstanceState);
         mainActivity = (MainActivity) getActivity();
         wifiP2PWrapper = WifiP2pWrapper.getInstance(mainActivity);
+
+        brObservable = wifiP2PWrapper.getWifiP2pBRObservable();
+        brObservable.subscribeOn(Schedulers.io())
+                .subscribe(new Consumer<Intent>() {
+                    @Override
+                    public void accept(Intent intent) throws Exception {
+                        String action = intent.getAction();
+                        if (action.equals(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)) {
+                            peersListObservable.subscribe(new Consumer<List<WifiP2pDevice>>() {
+                                @Override
+                                public void accept(List<WifiP2pDevice> wifiP2pDevices) throws Exception {
+                                    wifiP2PWrapper.setWifiP2pDevices(wifiP2pDevices);
+                                    if (wifiP2pDevices != null)
+                                        M.L("Inside PeersListenerObserver : Device list set.");
+                                    else
+                                        M.L("Inside PeersListenerObserver : Device List null/not set.");
+                                }
+                            });
+                        } else if (action.equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)) {
+                            NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+                            if (networkInfo.isConnected()) {
+                                connectionObservable.subscribeOn(Schedulers.io())
+                                        .subscribe(new Consumer<WifiP2pInfo>() {
+                                            @Override
+                                            public void accept(WifiP2pInfo wifiP2pInfo) throws Exception {
+                                                M.L("Inside OnConnectionInfoListener Observable : " + wifiP2pInfo.groupOwnerAddress);
+                                                hideProgressBar();
+                                                M.T(mainActivity, "Connected to Peer");
+                                            }
+                                        });
+                            } else {
+                                M.L("Inside BroadcastReceiver Observable : Not connected to any peers.");
+                            }
+                        }
+                    }
+                });
+        discoveryObservable = wifiP2PWrapper.getDiscoveryObservable();
+        peersListObservable = wifiP2PWrapper.getPeersListObservable();
+
+        connectionObservable = wifiP2PWrapper.getWifiP2pConnectionObservable();
         qrCodeManager = QRCodeManager.getInstance(mainActivity);
-        //ProgressShower shit
-        progressDialog = new ProgressDialog(mainActivity, STYLE_SPINNER);
-        progressDialog.setCancelable(false);
-        progressDialog.setIndeterminate(true);
     }
 
     @Override
@@ -86,52 +126,47 @@ public class ShareFragment extends Fragment implements FileTasksWrapper.Progress
         View view = inflater.inflate(R.layout.fragment_share, container, false);
         unbinder = ButterKnife.bind(this, view);
 
-
-        //sendBtn Listener
-        Observable<View> sendBtnOb = Observable.create(new ObservableOnSubscribe<View>() {
+        sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void subscribe(final ObservableEmitter<View> e) throws Exception {
-                sendBtn.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        e.onNext(view);
-                    }
-                });
-            }
-        });
-        sendBtnOb.observeOn(io.reactivex.schedulers.Schedulers.io()).doOnNext(new Consumer<View>() {
-            @Override
-            public void accept(View view) throws Exception {
-                wifiP2PWrapper.startDiscovery();
-            }
-        }).observeOn(io.reactivex.android.schedulers.AndroidSchedulers.mainThread()).doOnNext(new Consumer<View>() {
-            @Override
-            public void accept(View view) throws Exception {
-                Intent bcActivityIntent = new Intent(mainActivity, BarcodeCaptureActivity.class);
-                startActivityForResult(bcActivityIntent, BarcodeCaptureActivity.REQUEST_CODE);
+            public void onClick(View view) {
+                Intent bcIntent = new Intent(mainActivity, BarcodeCaptureActivity.class);
                 Intent fileIntent = new Intent(mainActivity, FilePickerActivity.class);
+
+                discoveryObservable.subscribeOn(Schedulers.io())
+                        .subscribe(new Consumer<String>() {
+                            @Override
+                            public void accept(String s) throws Exception {
+                                if (s.equals(WifiP2pWrapper.DISCOVERY_STATE_DISCOVERY_STARTED)) {
+                                    M.L("Inside SHareFragment : " + WifiP2pWrapper.DISCOVERY_STATE_DISCOVERY_STARTED);
+                                }
+                            }
+                        });
                 startActivityForResult(fileIntent, FileTasksWrapper.FILE_PICKER_CODE);
+                startActivityForResult(bcIntent, BarcodeCaptureActivity.REQUEST_CODE);
             }
-        }).subscribe(new Consumer<View>() {
+        });
+        receiveBtn.setOnClickListener(new View.OnClickListener() {
+
             @Override
-            public void accept(View view) throws Exception {
-                wifiP2PWrapper.setSendState(true);
+            public void onClick(View view) {
+                discoveryObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(new Consumer<String>() {
+                            @Override
+                            public void accept(String s) throws Exception {
+                                M.L("Inside DiscoveryObservable after Receiver Btn : " + s);
+                                if (s.equals(WifiP2pWrapper.DISCOVERY_STATE_DISCOVERY_STARTED)) {
+                                    Intent receiveIntent = new Intent(mainActivity, ReceiveActivity.class);
+                                    startActivity(receiveIntent);
+                                } else {
+                                    M.T(mainActivity, "Discovery failed, please try again.");
+                                }
+
+                            }
+                        });
+
             }
         });
 
-        RxView.clicks(receiveBtn).observeOn(io()).doOnNext(new Action1<Void>() {
-            @Override
-            public void call(Void aVoid) {
-                wifiP2PWrapper.startDiscovery();
-            }
-        }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Action1<Void>() {
-            @Override
-            public void call(Void aVoid) {
-                wifiP2PWrapper.setSendState(false);
-                Intent intent = new Intent(mainActivity, ReceiveActivity.class);
-                mainActivity.startActivity(intent);
-            }
-        });
 
         return view;
     }
@@ -149,18 +184,20 @@ public class ShareFragment extends Fragment implements FileTasksWrapper.Progress
         if (requestCode == BarcodeCaptureActivity.REQUEST_CODE) {
             if (resultCode == CommonStatusCodes.SUCCESS) {
                 if (data != null) {
-                    Observable.just(data).subscribeOn(io.reactivex.android.schedulers.AndroidSchedulers.mainThread()).observeOn(io.reactivex.schedulers.Schedulers.io()).subscribe(new Consumer<Intent>() {
+                    Observable.just(data).subscribeOn(AndroidSchedulers.mainThread())
+                            .observeOn(Schedulers.io()).doOnNext(new Consumer<Intent>() {
                         @Override
                         public void accept(Intent intent) throws Exception {
                             Barcode barcode = intent.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
                             String address = barcode.displayValue;
-                            M.L(address);
-                            if (wifiP2PWrapper.connect(address)) {
-                                M.L("Connection Established.");
-                            } else {
-                                M.L("Not connected, so can't send any data");
-                            }
+                            M.L("Connecting to -->" + address);
+                            wifiP2PWrapper.connect(address);
 
+                        }
+                    }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<Intent>() {
+                        @Override
+                        public void accept(Intent intent) throws Exception {
+                            showProgressBar("Connecting to peer device");
                         }
                     });
 
@@ -171,48 +208,34 @@ public class ShareFragment extends Fragment implements FileTasksWrapper.Progress
                 M.L("BarcodeCaptureActivity mdhe jhol aahe");
             }
         } else if (requestCode == FileTasksWrapper.FILE_PICKER_CODE && resultCode == RESULT_OK) {
-            Observable.just(data).subscribeOn(io.reactivex.android.schedulers.AndroidSchedulers.mainThread()).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
-                @Override
-                public void accept(Intent intent) throws Exception {
-                    Uri uri = intent.getData();
-                    // A utility method is provided to transform the URI to a File object
-                    File file = com.nononsenseapps.filepicker.Utils.getFileForUri(uri);
-                    if (file != null) {
-                        M.L("FIle aahe re babba " + file.getAbsolutePath() + file.getName() + " " + Thread.currentThread().getName());
+            Observable.just(data).subscribeOn(io.reactivex.android.schedulers.AndroidSchedulers.mainThread())
+                    .observeOn(Schedulers.newThread())
+                    .subscribe(new Consumer<Intent>() {
+                        @Override
+                        public void accept(Intent intent) throws Exception {
+                            Uri uri = intent.getData();
+                            // A utility method is provided to transform the URI to a File object
+                            File file = com.nononsenseapps.filepicker.Utils.getFileForUri(uri);
+                            M.L("File aahe re : " + file.getAbsolutePath());
 
-                        fileTasksWrapper = FileTasksWrapper.getInstance(file, true);
-                        if (wifiP2PWrapper.isGroupOwnerAddressPresent()) {
-                            if (fileTasksWrapper.sendAFile(wifiP2PWrapper.getGroupOwnerAddress())) {
-                                M.L("data sending successfull.");
-                            }
-                        } else {
-                            M.L("Receiver address nahi bhetla");
                         }
-
-                    }
-                }
-            });
+                    });
 
         } else M.L("Request code didn't match ");
     }
 
-
-    @Override
-    public void showProgress(String textCaption) {
-        if (progressDialog != null) {
-            progressDialog.setMessage(textCaption);
-            progressDialog.show();
-        } else {
-            M.L("Cannot show shareFragment progressdialog since it's null");
-        }
+    private void showProgressBar(String message) {
+        progressDialog = new ProgressDialog(mainActivity, ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setIndeterminate(true);
+        progressDialog.setMessage(message);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
     }
 
-    @Override
-    public void hideProgress() {
-        if (progressDialog != null) {
-            progressDialog.hide();
-        } else {
-            M.L("Cannot Hide ShareFragment progressdialog since it's null");
-        }
+    private void hideProgressBar() {
+        if (progressDialog.isShowing())
+            progressDialog.dismiss();
     }
+
+
 }
