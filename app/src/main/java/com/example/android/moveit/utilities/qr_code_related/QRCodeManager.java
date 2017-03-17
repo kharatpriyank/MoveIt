@@ -21,6 +21,7 @@ public class QRCodeManager {
     public static final int BARCODE_READER_REQUEST_CODE = 1;
     public static final int QR_WIDTH = 600;
     public static final int QR_HEIGHT = 600;
+    public static final int QR_CODE_VISIBLE_TIME_SECONDS = 30;
 
 
     //Singleton class, since only one instance is needed throughout application.

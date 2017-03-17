@@ -26,6 +26,9 @@ import io.reactivex.ObservableOnSubscribe;
 public class WifiP2pWrapper {
     public static final String DISCOVERY_STATE_DISCOVERY_STARTED = "discovery_started";
     public static final String DISCOVERY_STATE_DISCOVERY_NOT_STARTED = "discovered_not_started";
+    public static final int CONNECTION_SUCCESS_CODE = 99;
+    public static final int CONNECTION_UNSUCCESSFULL_CODE = 100;
+    public static final int CONNECTION_INDETERMINATE_CODE = 101;
 
     private static WifiP2pWrapper instance;
     public WifiP2pManager wifiP2pManager;
@@ -38,6 +41,8 @@ public class WifiP2pWrapper {
     private Observable<List<WifiP2pDevice>> peersListObservable;
     private Observable<WifiP2pInfo> wifiP2pConnectionObservable;
     private List<WifiP2pDevice> wifiP2pDevices;
+
+
 
     //Private Constructor for singleton
     private WifiP2pWrapper(final Context context) {
@@ -53,7 +58,7 @@ public class WifiP2pWrapper {
                 BrIntentFilterWrapper.getInstance().wifiP2pFilter);
         discoveryObservable = Observable.create(new ObservableOnSubscribe<String>() {
             @Override
-            public void subscribe(ObservableEmitter<String> e) throws Exception {
+            public void subscribe(final ObservableEmitter<String> e) throws Exception {
                 wifiP2pManager.discoverPeers(wifiP2pChannel, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {
@@ -72,7 +77,7 @@ public class WifiP2pWrapper {
         });
         peersListObservable = Observable.create(new ObservableOnSubscribe<List<WifiP2pDevice>>() {
             @Override
-            public void subscribe(ObservableEmitter<List<WifiP2pDevice>> e) throws Exception {
+            public void subscribe(final ObservableEmitter<List<WifiP2pDevice>> e) throws Exception {
                 wifiP2pManager.requestPeers(wifiP2pChannel, new WifiP2pManager.PeerListListener() {
                     @Override
                     public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
@@ -86,7 +91,7 @@ public class WifiP2pWrapper {
         });
         wifiP2pConnectionObservable = Observable.create(new ObservableOnSubscribe<WifiP2pInfo>() {
             @Override
-            public void subscribe(ObservableEmitter<WifiP2pInfo> e) throws Exception {
+            public void subscribe(final ObservableEmitter<WifiP2pInfo> e) throws Exception {
                 wifiP2pManager.requestConnectionInfo(wifiP2pChannel, new WifiP2pManager.ConnectionInfoListener() {
                     @Override
                     public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {

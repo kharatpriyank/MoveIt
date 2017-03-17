@@ -23,24 +23,23 @@ public class FileTasksWrapper {
     public static final int TIMEOUT = 5000;
     //singleton object
     private static FileTasksWrapper instatnce;
-    private File aFile;
+    private File file;
 
 
-    private FileTasksWrapper(File aFile, boolean isSendState) {
-        if (isSendState) {
-            this.aFile = aFile;
-        } else {
-            //create a new directory if it doesn't exist, and add the appropriate extension.
 
-        }
+    private InetAddress receiverAddress;
+
+
+    private FileTasksWrapper() {
+
     }
 
     //Singleton creator.
-    public static FileTasksWrapper getInstance(final File file, final boolean isSendState) {
+    public static FileTasksWrapper getInstance() {
         if (instatnce == null) {
             synchronized (FileTasksWrapper.class) {
                 if (instatnce == null) {
-                    instatnce = new FileTasksWrapper(file, isSendState);
+                    instatnce = new FileTasksWrapper();
                 }
             }
         }
@@ -68,22 +67,22 @@ public class FileTasksWrapper {
         return true;
     }
 
-    public boolean sendAFile(InetAddress address) {
+    public boolean sendAFile() {
         Socket sendSocket = null;
         InputStream is = null;
         OutputStream out = null;
         try {
             sendSocket = new Socket();
             sendSocket.bind(null);
-            sendSocket.connect(new InetSocketAddress(address, MY_PORT), TIMEOUT);
+            sendSocket.connect(new InetSocketAddress(receiverAddress, MY_PORT), TIMEOUT);
             M.L("Socket connected");
             is = new ByteArrayInputStream("THis is something to send".getBytes());
             out = sendSocket.getOutputStream();
             copyFile(is, out);
-
             return true;
         } catch (Exception e) {
-            M.L("Send file error : " + e.getMessage());
+            e.printStackTrace();
+                    M.L("Send file error : " + e.getMessage());
             return false;
         } finally {
             try {
@@ -140,14 +139,16 @@ public class FileTasksWrapper {
 
     }
 
-
-    public interface FileReceiver {
-        void receiveFile();
+    public InetAddress getReceiverAddress() {
+        return receiverAddress;
     }
 
-    public interface ProgressShower {
-        void showProgress(String textCaption);
+    public void setReceiverAddress(InetAddress receiverAddress) {
+        this.receiverAddress = receiverAddress;
+    }
 
-        void hideProgress();
+
+    public void setFile(File file) {
+        this.file = file;
     }
 }

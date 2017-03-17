@@ -36,6 +36,7 @@ import butterknife.Unbinder;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 import mehdi.sakout.fancybuttons.FancyButton;
 
@@ -75,11 +76,15 @@ public class ShareFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mainActivity = (MainActivity) getActivity();
+        fileTasksWrapper = FileTasksWrapper.getInstance();
         wifiP2PWrapper = WifiP2pWrapper.getInstance(mainActivity);
-
         brObservable = wifiP2PWrapper.getWifiP2pBRObservable();
-        brObservable.subscribeOn(Schedulers.io())
-                .subscribe(new Consumer<Intent>() {
+        brObservable.subscribeOn(Schedulers.io()).filter(new Predicate<Intent>() {
+            @Override
+            public boolean test(Intent intent) throws Exception {
+                return wifiP2PWrapper.isSendState();
+            }
+        }).doOnNext(new Consumer<Intent>() {
                     @Override
                     public void accept(Intent intent) throws Exception {
                         String action = intent.getAction();
@@ -95,23 +100,41 @@ public class ShareFragment extends Fragment {
                                 }
                             });
                         } else if (action.equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)) {
-                            NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-                            if (networkInfo.isConnected()) {
-                                connectionObservable.subscribeOn(Schedulers.io())
-                                        .subscribe(new Consumer<WifiP2pInfo>() {
+                            final NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+
+                            connectionObservable.filter(new Predicate<WifiP2pInfo>() {
+                                @Override
+                                public boolean test(WifiP2pInfo wifiP2pInfo) throws Exception {
+                                    return networkInfo.isConnected();
+                                }
+                            }).subscribeOn(Schedulers.io())
+                                        .doOnNext(new Consumer<WifiP2pInfo>() {
                                             @Override
                                             public void accept(WifiP2pInfo wifiP2pInfo) throws Exception {
                                                 M.L("Inside OnConnectionInfoListener Observable : " + wifiP2pInfo.groupOwnerAddress);
                                                 hideProgressBar();
-                                                M.T(mainActivity, "Connected to Peer");
+                                                   fileTasksWrapper.setReceiverAddress(wifiP2pInfo.groupOwnerAddress);
+                                                   M.T(mainActivity, "Connected to Peer,sending file");
+
+
                                             }
-                                        });
-                            } else {
-                                M.L("Inside BroadcastReceiver Observable : Not connected to any peers.");
-                            }
+                                        }).observeOn(Schedulers.io()).subscribe(new Consumer<WifiP2pInfo>() {
+                                @Override
+                                public void accept(WifiP2pInfo wifiP2pInfo) throws Exception {
+                                    if(fileTasksWrapper.sendAFile())
+                                        M.L("Sending complete");
+                                }
+                            });
+
                         }
                     }
-                });
+                }).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
+            @Override
+            public void accept(Intent intent) throws Exception {
+
+
+            }
+        });
         discoveryObservable = wifiP2PWrapper.getDiscoveryObservable();
         peersListObservable = wifiP2PWrapper.getPeersListObservable();
 
@@ -129,6 +152,8 @@ public class ShareFragment extends Fragment {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                wifiP2PWrapper.setSendState(true);
+
                 Intent bcIntent = new Intent(mainActivity, BarcodeCaptureActivity.class);
                 Intent fileIntent = new Intent(mainActivity, FilePickerActivity.class);
 
@@ -149,6 +174,7 @@ public class ShareFragment extends Fragment {
 
             @Override
             public void onClick(View view) {
+                wifiP2PWrapper.setSendState(false);
                 discoveryObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new Consumer<String>() {
                             @Override
@@ -218,6 +244,8 @@ public class ShareFragment extends Fragment {
                             File file = com.nononsenseapps.filepicker.Utils.getFileForUri(uri);
                             M.L("File aahe re : " + file.getAbsolutePath());
 
+
+
                         }
                     });
 
@@ -225,7 +253,7 @@ public class ShareFragment extends Fragment {
     }
 
     private void showProgressBar(String message) {
-        progressDialog = new ProgressDialog(mainActivity, ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog = new ProgressDialog(mainActivity, ProgressDialog.STYLE_SPINNER);
         progressDialog.setIndeterminate(true);
         progressDialog.setMessage(message);
         progressDialog.setCancelable(false);

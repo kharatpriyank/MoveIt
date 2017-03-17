@@ -54,7 +54,7 @@ public class RxBroadcastReceiver implements ObservableOnSubscribe<Intent>, Dispo
      * @return
      */
     public static Observable<Intent> create(Context context, IntentFilter intentFilter) {
-        return Observable.defer(() -> Observable.create(new RxBroadcastReceiver(context, intentFilter)));
+        return Observable.create(new RxBroadcastReceiver(context, intentFilter));
 
     }
 

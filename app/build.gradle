@@ -11,9 +11,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
-        jackOptions {
-            enabled true
-        }
+
     }
     ext {
         supportLibVersion = '24.0.0'
@@ -30,8 +28,8 @@ android {
     }
 
     compileOptions {
-        targetCompatibility JavaVersion.VERSION_1_8
-        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility 1.7
+        sourceCompatibility 1.7
     }
 }
 

@@ -1,7 +1,7 @@
 package com.example.android.moveit.activities;
 
-import android.app.ProgressDialog;
 import android.content.Intent;
+import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
@@ -21,6 +21,7 @@ import butterknife.Unbinder;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 
 public class ReceiveActivity extends AppCompatActivity {
@@ -28,12 +29,13 @@ public class ReceiveActivity extends AppCompatActivity {
     Unbinder unbinder;
     @BindView(R.id.qrCodeBox)
     ImageView imageView;
-    private ProgressDialog progressDialog;
+
     private WifiP2pEventsObservableCreator wifiP2pBroadcastReceiver;
     private WifiP2pWrapper wifiP2pAdapter;
     private QRCodeManager qrCodeManager;
     private FileTasksWrapper fileTasksWrapper;
     private Observable<Intent> brObservable;
+
 
 
     @Override
@@ -50,7 +52,7 @@ public class ReceiveActivity extends AppCompatActivity {
         wifiP2pAdapter = WifiP2pWrapper.getInstance(this);
         brObservable = wifiP2pAdapter.getWifiP2pBRObservable();
         brObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Intent>() {
+                .doOnNext(new Consumer<Intent>() {
                     @Override
                     public void accept(Intent intent) throws Exception {
                         String action = intent.getAction();
@@ -67,8 +69,25 @@ public class ReceiveActivity extends AppCompatActivity {
                             }
                         }
                     }
-                });
-        fileTasksWrapper = FileTasksWrapper.getInstance(null, false);
+                }).filter(new Predicate<Intent>() {
+            @Override
+            public boolean test(Intent intent) throws Exception {
+                if(intent.getAction().equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)){
+                    NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+                    if(info.isConnected())
+                        return true;
+
+                }return false;
+            }
+        }).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
+            @Override
+            public void accept(Intent intent) throws Exception {
+                M.L("Receive Activity: File sending will occur");
+                String temp  = fileTasksWrapper.receiveFile();
+                M.L("ReciveActivity : "+temp);
+            }
+        });
+        fileTasksWrapper = FileTasksWrapper.getInstance();
 
     }
     @Override
@@ -76,4 +95,6 @@ public class ReceiveActivity extends AppCompatActivity {
         unbinder.unbind();
         super.onDestroy();
     }
+
+
 }
