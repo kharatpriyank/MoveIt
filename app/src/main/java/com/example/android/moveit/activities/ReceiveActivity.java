@@ -9,7 +9,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
 import com.example.android.moveit.R;
-import com.example.android.moveit.utilities.FileTasksWrapper;
+import com.example.android.moveit.file_related.FileTasksWrapper;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
 import com.example.android.moveit.wifi_related.WifiP2pEventsObservableCreator;
@@ -82,9 +82,8 @@ public class ReceiveActivity extends AppCompatActivity {
         }).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
             @Override
             public void accept(Intent intent) throws Exception {
-                M.L("Receive Activity: File sending will occur");
-                String temp  = fileTasksWrapper.receiveFile();
-                M.L("ReciveActivity : "+temp);
+                fileTasksWrapper.receiveFile();
+
             }
         });
         fileTasksWrapper = FileTasksWrapper.getInstance();

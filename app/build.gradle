@@ -65,5 +65,13 @@ dependencies {
     //file picker
     compile 'com.nononsenseapps:filepicker:4.0.0'
 
+    //Apache common io
+    compile group: 'commons-io', name: 'commons-io', version: '2.4'
+
+    //kryo for serialization
+    compile group: 'com.esotericsoftware.kryo', name: 'kryo', version: '2.10'
+
+
+
 
 }
