@@ -19,6 +19,7 @@ import com.example.android.moveit.R;
 import com.example.android.moveit.activities.BarcodeCaptureActivity;
 import com.example.android.moveit.activities.MainActivity;
 import com.example.android.moveit.activities.ReceiveActivity;
+import com.example.android.moveit.file_related.FileStateObject;
 import com.example.android.moveit.file_related.FileTasksWrapper;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.utilities.qr_code_related.QRCodeManager;
@@ -65,7 +66,7 @@ public class ShareFragment extends Fragment {
     private Observable<List<WifiP2pDevice>> peersListObservable;
     private Observable<WifiP2pInfo> connectionObservable;
     private Observable<Intent> brObservable;
-
+    private Observable<FileStateObject> fileStateObjectObservable;
 
     public ShareFragment() {
         // Required empty public constructor
@@ -76,7 +77,12 @@ public class ShareFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
         mainActivity = (MainActivity) getActivity();
         fileTasksWrapper = FileTasksWrapper.getInstance();
+        fileStateObjectObservable = fileTasksWrapper.getMetaDataObservable();
         wifiP2PWrapper = WifiP2pWrapper.getInstance(mainActivity);
+        discoveryObservable = wifiP2PWrapper.getDiscoveryObservable();
+        peersListObservable = wifiP2PWrapper.getPeersListObservable();
+        connectionObservable = wifiP2PWrapper.getWifiP2pConnectionObservable();
+        qrCodeManager = QRCodeManager.getInstance(mainActivity);
         brObservable = wifiP2PWrapper.getWifiP2pBRObservable();
         brObservable.subscribeOn(Schedulers.io()).filter(new Predicate<Intent>() {
             @Override
@@ -134,11 +140,17 @@ public class ShareFragment extends Fragment {
 
             }
         });
-        discoveryObservable = wifiP2PWrapper.getDiscoveryObservable();
-        peersListObservable = wifiP2PWrapper.getPeersListObservable();
+        fileStateObjectObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<FileStateObject>() {
+            @Override
+            public void accept(FileStateObject fileStateObject) throws Exception {
+               if(wifiP2PWrapper.isSendState()) {
 
-        connectionObservable = wifiP2PWrapper.getWifiP2pConnectionObservable();
-        qrCodeManager = QRCodeManager.getInstance(mainActivity);
+                   M.L("Inside SendFile : FileStateObject Received-->"+fileStateObject.getFileName() + " Size : "+ fileStateObject.getSize());
+               }
+            }
+        });
+
+
     }
 
     @Override
@@ -193,7 +205,6 @@ public class ShareFragment extends Fragment {
             }
         });
 
-
         return view;
     }
 
@@ -241,7 +252,7 @@ public class ShareFragment extends Fragment {
                         public void accept(Intent intent) throws Exception {
                             Uri uri = intent.getData();
                             // A utility method is provided to transform the URI to a File object
-                            fileTasksWrapper.setFile(com.nononsenseapps.filepicker.Utils.getFileForUri(uri));
+                            fileTasksWrapper.setReceiveFile(com.nononsenseapps.filepicker.Utils.getFileForUri(uri));
                             M.L("Inside shareFragment onActivityResult : file obtained");
 
                         }
