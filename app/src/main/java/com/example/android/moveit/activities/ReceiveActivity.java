@@ -22,7 +22,6 @@ import butterknife.Unbinder;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Consumer;
-import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 
 public class ReceiveActivity extends AppCompatActivity {
@@ -72,21 +71,22 @@ public class ReceiveActivity extends AppCompatActivity {
                             }
                         }
                     }
-                }).filter(new Predicate<Intent>() {
-            @Override
-            public boolean test(Intent intent) throws Exception {
-                if (intent.getAction().equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)) {
-                    NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-                    if (info.isConnected())
-                        return true;
-
-                }
-                return false;
-            }
-        }).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
+                }).observeOn(Schedulers.io()).subscribe(new Consumer<Intent>() {
             @Override
             public void accept(Intent intent) throws Exception {
-                fileTasksWrapper.receiveFile();
+                if (intent.getAction().equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)) {
+                    NetworkInfo info = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+                    if (info.isConnected()){
+                        M.L("Inside ReceiveActivity brObservable : Device is connected to MAC level.");
+                        fileTasksWrapper.receiveFile();
+                    }else{
+                        M.L("Inside ReceiveActivity brObservable : Device is disconnected at MAC level.");
+
+                    }
+
+
+                }
+
 
             }
         });
@@ -94,7 +94,14 @@ public class ReceiveActivity extends AppCompatActivity {
             @Override
             public void accept(FileStateObject fileStateObject) throws Exception {
                 if (!wifiP2pAdapter.isSendState()) {
-                    M.L("Inside ReceiveActivity : FileStateObject Received-->" + fileStateObject.getFileName() + " size : " + fileStateObject.getSize());
+                    if(!fileTasksWrapper.isFirstMetadataSent()){
+                        M.L("Inside ReceiveActivity: Show dialog progress here.");
+                        //Show the progress dialog here.
+                    }else{
+                        //Use fileStateObject.getProgress to update progressbar while sharing.
+                        M.L("Inside ReceiveActivity : FileStateObject Received-->" + fileStateObject.getFileName() + " size : " + fileStateObject.getSize());
+                        //hide progress bar if progress == FileTasksWrapper.MAX_PROGRESS
+                    }
                 }
             }
         });

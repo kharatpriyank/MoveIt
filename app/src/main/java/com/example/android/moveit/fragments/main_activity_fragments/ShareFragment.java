@@ -53,7 +53,7 @@ public class ShareFragment extends Fragment {
     FancyButton sendBtn;
     @BindView(R.id.receiveBtn)
     FancyButton receiveBtn;
-    private ProgressDialog progressDialog;
+    private ProgressDialog connWaitDialog;
 
     // TextView connectionStatus;
     //other references
@@ -112,12 +112,12 @@ public class ShareFragment extends Fragment {
                         public boolean test(WifiP2pInfo wifiP2pInfo) throws Exception {
                             return networkInfo.isConnected();
                         }
-                    }).subscribeOn(Schedulers.io())
+                    }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                             .doOnNext(new Consumer<WifiP2pInfo>() {
                                 @Override
                                 public void accept(WifiP2pInfo wifiP2pInfo) throws Exception {
                                     M.L("Inside OnConnectionInfoListener Observable : " + wifiP2pInfo.groupOwnerAddress);
-                                    hideProgressBar();
+                                    hideConnectionWaitDialog();
                                     fileTasksWrapper.setReceiverAddress(wifiP2pInfo.groupOwnerAddress);
                                     M.T(mainActivity, "Connected to Peer,sending file");
 
@@ -144,8 +144,15 @@ public class ShareFragment extends Fragment {
             @Override
             public void accept(FileStateObject fileStateObject) throws Exception {
                if(wifiP2PWrapper.isSendState()) {
+                   if(!fileTasksWrapper.isFirstMetadataSent()){
+                        M.L("Inside ShareFragment : Show dialog progress here.");
+                       //Show the progress dialog here.
+                   }else{
+                       //Use fileStateObject.getProgress to update progressbar while sharing.
+                       M.L("Inside ShareFragment : FileStateObject Received-->" + fileStateObject.getFileName() + " size : " + fileStateObject.getSize());
+                       //hide progress bar if progress == FileTasksWrapper.MAX_PROGRESS
 
-                   M.L("Inside SendFile : FileStateObject Received-->"+fileStateObject.getFileName() + " Size : "+ fileStateObject.getSize());
+                   }
                }
             }
         });
@@ -234,12 +241,13 @@ public class ShareFragment extends Fragment {
                     }).observeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<Intent>() {
                         @Override
                         public void accept(Intent intent) throws Exception {
-                            showProgressBar("Connecting to peer device");
+                            showConnectionWaitDialog("Connecting to peer device");
                         }
                     });
 
                 } else {
                     M.L("barcode return kartana jhol aahe");
+
                 }
             } else {
                 M.L("BarcodeCaptureActivity mdhe jhol aahe");
@@ -251,7 +259,6 @@ public class ShareFragment extends Fragment {
                         @Override
                         public void accept(Intent intent) throws Exception {
                             Uri uri = intent.getData();
-                            // A utility method is provided to transform the URI to a File object
                             fileTasksWrapper.setReceiveFile(com.nononsenseapps.filepicker.Utils.getFileForUri(uri));
                             M.L("Inside shareFragment onActivityResult : file obtained");
 
@@ -261,18 +268,17 @@ public class ShareFragment extends Fragment {
         } else M.L("Request code didn't match ");
     }
 
-    private void showProgressBar(String message) {
-        progressDialog = new ProgressDialog(mainActivity, ProgressDialog.STYLE_SPINNER);
-        progressDialog.setIndeterminate(true);
-        progressDialog.setMessage(message);
-        progressDialog.setCancelable(false);
-        progressDialog.show();
+    private void showConnectionWaitDialog(String message) {
+        connWaitDialog = new ProgressDialog(mainActivity, ProgressDialog.STYLE_SPINNER);
+        connWaitDialog.setIndeterminate(true);
+        connWaitDialog.setMessage(message);
+        connWaitDialog.setCancelable(false);
+        connWaitDialog.show();
     }
 
-    private void hideProgressBar() {
-        if (progressDialog.isShowing())
-            progressDialog.dismiss();
+    private void hideConnectionWaitDialog() {
+        if (connWaitDialog.isShowing())
+            connWaitDialog.dismiss();
     }
-
 
 }
