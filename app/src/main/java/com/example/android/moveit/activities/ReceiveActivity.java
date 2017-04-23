@@ -1,5 +1,6 @@
 package com.example.android.moveit.activities;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -29,6 +30,7 @@ public class ReceiveActivity extends AppCompatActivity {
     Unbinder unbinder;
     @BindView(R.id.qrCodeBox)
     ImageView imageView;
+    ProgressDialog progressDialog;
 
     private WifiP2pEventsObservableCreator wifiP2pBroadcastReceiver;
     private WifiP2pWrapper wifiP2pAdapter;
@@ -36,6 +38,7 @@ public class ReceiveActivity extends AppCompatActivity {
     private FileTasksWrapper fileTasksWrapper;
     private Observable<Intent> brObservable;
     private Observable<FileStateObject> fileStateObjectObservable;
+    private boolean isProgressBarShown, isComplete;
 
 
     @Override
@@ -43,11 +46,14 @@ public class ReceiveActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_receive);
         unbinder = ButterKnife.bind(this);
+        progressDialog = new ProgressDialog(this,ProgressDialog.STYLE_SPINNER);
+
         init();
 
     }
 
     private void init() {
+
         qrCodeManager = QRCodeManager.getInstance(this);
         wifiP2pAdapter = WifiP2pWrapper.getInstance(this);
         brObservable = wifiP2pAdapter.getWifiP2pBRObservable();
@@ -95,12 +101,25 @@ public class ReceiveActivity extends AppCompatActivity {
             public void accept(FileStateObject fileStateObject) throws Exception {
                 if (!wifiP2pAdapter.isSendState()) {
                     if(!fileTasksWrapper.isFirstMetadataSent()){
-                        M.L("Inside ReceiveActivity: Show dialog progress here.");
-                        //Show the progress dialog here.
+                        M.L("Inside ReceiveActivity: Meta data recievied, file name : "+ fileStateObject.getFileName());
                     }else{
+                        if(!isProgressBarShown){
+                            showProgressDialog();
+                            isProgressBarShown = true;
+                        }
                         //Use fileStateObject.getProgress to update progressbar while sharing.
-                        M.L("Inside ReceiveActivity : FileStateObject Received-->" + fileStateObject.getFileName() + " size : " + fileStateObject.getSize());
-                        //hide progress bar if progress == FileTasksWrapper.MAX_PROGRESS
+                        float progress = (((float)fileStateObject.getTransferredBytes()/fileStateObject.getSize())*FileTasksWrapper.MAX_PROGRESS);
+
+                        M.L("Inside ReceiveActivity : Progress : "+progress);
+                        updateProgress((int)progress);
+                        //hide progress bar if progress == FileTasksWrapper.MAX_PRORESS
+
+                        if(fileStateObject.getTransferredBytes() == fileStateObject.getSize() && !isComplete) {
+                            M.T(ReceiveActivity.this, fileStateObject.getFileName()+" Received!");
+                            isComplete = true;
+                            hideProgressDialog();
+
+                        }
                     }
                 }
             }
@@ -108,6 +127,23 @@ public class ReceiveActivity extends AppCompatActivity {
 
     }
 
+    public void showProgressDialog(){
+        progressDialog.setIndeterminate(false);
+        progressDialog.setTitle(R.string.progress_bar_title);
+        progressDialog.setCancelable(false);
+        progressDialog.setMax(FileTasksWrapper.MAX_PROGRESS);
+        progressDialog.show();
+    }
+    public void updateProgress(int progress){
+        progressDialog.setProgress(progress);
+        progressDialog.setMessage("Progress : "+progress+"%");
+    }
+    public void hideProgressDialog(){
+        if(progressDialog.isShowing()) {
+            progressDialog.dismiss();
+
+        }
+    }
     @Override
     protected void onDestroy() {
         unbinder.unbind();

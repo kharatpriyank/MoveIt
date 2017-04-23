@@ -5,7 +5,8 @@ package com.example.android.moveit.file_related;
  */
 
 public class FileStateObject {
-    private long size, progress;
+    private long size;
+    private long transferredBytes;
     private String fileName;
 
     public long getSize() {
@@ -16,13 +17,7 @@ public class FileStateObject {
         this.size = size;
     }
 
-    public long getProgress() {
-        return progress;
-    }
 
-    public void setProgress(long progress) {
-        this.progress = progress;
-    }
 
     public String getFileName() {
         return fileName;
@@ -32,4 +27,14 @@ public class FileStateObject {
         this.fileName = fileName;
     }
 
+    public long getTransferredBytes() {
+        return transferredBytes;
+    }
+
+    public void setTransferredBytes(long transferredBytes) {
+        this.transferredBytes = transferredBytes;
+    }
+    public void addTranseferBytes(long transferredBytes){
+        this.transferredBytes += transferredBytes;
+    }
 }

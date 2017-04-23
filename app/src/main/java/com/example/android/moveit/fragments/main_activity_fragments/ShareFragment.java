@@ -14,6 +14,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.example.android.moveit.R;
 import com.example.android.moveit.activities.BarcodeCaptureActivity;
@@ -53,7 +54,8 @@ public class ShareFragment extends Fragment {
     FancyButton sendBtn;
     @BindView(R.id.receiveBtn)
     FancyButton receiveBtn;
-    private ProgressDialog connWaitDialog;
+    private ProgressDialog connWaitDialog,progressDialog;
+    private boolean isProgressBarShown,isComplete;
 
     // TextView connectionStatus;
     //other references
@@ -61,6 +63,7 @@ public class ShareFragment extends Fragment {
     private WifiP2pWrapper wifiP2PWrapper;
     private QRCodeManager qrCodeManager;
     private FileTasksWrapper fileTasksWrapper;
+
     //Observables
     private Observable<String> discoveryObservable;
     private Observable<List<WifiP2pDevice>> peersListObservable;
@@ -76,6 +79,8 @@ public class ShareFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mainActivity = (MainActivity) getActivity();
+        progressDialog = new ProgressDialog(mainActivity,ProgressDialog.STYLE_SPINNER);
+        isProgressBarShown = false;
         fileTasksWrapper = FileTasksWrapper.getInstance();
         fileStateObjectObservable = fileTasksWrapper.getMetaDataObservable();
         wifiP2PWrapper = WifiP2pWrapper.getInstance(mainActivity);
@@ -93,6 +98,7 @@ public class ShareFragment extends Fragment {
             @Override
             public void accept(Intent intent) throws Exception {
                 String action = intent.getAction();
+                M.L("Inside SenD side BrObservable Observer, event : "+action);
                 if (action.equals(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)) {
                     peersListObservable.subscribe(new Consumer<List<WifiP2pDevice>>() {
                         @Override
@@ -107,20 +113,18 @@ public class ShareFragment extends Fragment {
                 } else if (action.equals(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)) {
                     final NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
 
-                    connectionObservable.filter(new Predicate<WifiP2pInfo>() {
-                        @Override
-                        public boolean test(WifiP2pInfo wifiP2pInfo) throws Exception {
-                            return networkInfo.isConnected();
-                        }
-                    }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                    connectionObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                             .doOnNext(new Consumer<WifiP2pInfo>() {
                                 @Override
                                 public void accept(WifiP2pInfo wifiP2pInfo) throws Exception {
-                                    M.L("Inside OnConnectionInfoListener Observable : " + wifiP2pInfo.groupOwnerAddress);
-                                    hideConnectionWaitDialog();
-                                    fileTasksWrapper.setReceiverAddress(wifiP2pInfo.groupOwnerAddress);
-                                    M.T(mainActivity, "Connected to Peer,sending file");
-
+                                    if (networkInfo.isConnected()) {
+                                        M.L("Inside OnConnectionInfoListener Observable : " + wifiP2pInfo.groupOwnerAddress);
+                                        hideConnectionWaitDialog();
+                                        fileTasksWrapper.setReceiverAddress(wifiP2pInfo.groupOwnerAddress);
+                                        Toast.makeText(mainActivity, "Peer Connected, Sending file now.......", Toast.LENGTH_LONG).show();
+                                    }else{
+                                        M.L("Inside onConncetionLIstener Observable: Cannot connect to peer device.");
+                                    }
 
                                 }
                             }).observeOn(Schedulers.io()).subscribe(new Consumer<WifiP2pInfo>() {
@@ -143,17 +147,30 @@ public class ShareFragment extends Fragment {
         fileStateObjectObservable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<FileStateObject>() {
             @Override
             public void accept(FileStateObject fileStateObject) throws Exception {
-               if(wifiP2PWrapper.isSendState()) {
-                   if(!fileTasksWrapper.isFirstMetadataSent()){
-                        M.L("Inside ShareFragment : Show dialog progress here.");
-                       //Show the progress dialog here.
-                   }else{
-                       //Use fileStateObject.getProgress to update progressbar while sharing.
-                       M.L("Inside ShareFragment : FileStateObject Received-->" + fileStateObject.getFileName() + " size : " + fileStateObject.getSize());
-                       //hide progress bar if progress == FileTasksWrapper.MAX_PROGRESS
+                if (wifiP2PWrapper.isSendState()) {
+                    if (!fileTasksWrapper.isFirstMetadataSent()) {
+                        M.L("Inside ShareFragment : File Size : "+fileStateObject.getSize()+" bytes.");
+                        //Show the progress dialog here.
 
-                   }
-               }
+                    } else {
+                        if(!isProgressBarShown){
+                            showProgressDialog();
+                            isProgressBarShown = true;
+                        }
+                        float progress = (((float)fileStateObject.getTransferredBytes()/fileStateObject.getSize())*FileTasksWrapper.MAX_PROGRESS);
+                        //Use fileStateObject.getProgress to update progressbar while sharing.
+                       M.L("Inside ShareFragment : Progress : "+progress);
+                        updateProgress((int)progress);
+                        //hide progress bar if progress == FileTasksWrapper.MAX_PRORESS
+
+                        if(fileStateObject.getTransferredBytes() == fileStateObject.getSize() && !isComplete) {
+                            hideProgressDialog();
+                            M.T(mainActivity, fileStateObject.getFileName()+" Sent!");
+                            isComplete = true;
+                        }
+
+                    }
+                }
             }
         });
 
@@ -279,6 +296,24 @@ public class ShareFragment extends Fragment {
     private void hideConnectionWaitDialog() {
         if (connWaitDialog.isShowing())
             connWaitDialog.dismiss();
+    }
+    public void showProgressDialog(){
+        progressDialog.setIndeterminate(false);
+        progressDialog.setTitle(R.string.progress_bar_title);
+        progressDialog.setCancelable(false);
+        progressDialog.setMax(FileTasksWrapper.MAX_PROGRESS);
+        progressDialog.show();
+    }
+    public void updateProgress(int progress){
+        progressDialog.setProgress(progress);
+        progressDialog.setMessage("Progress : "+progress+"%");
+
+    }
+    public void hideProgressDialog(){
+        if(progressDialog.isShowing()) {
+            progressDialog.dismiss();
+
+        }
     }
 
 }

@@ -1,13 +1,10 @@
 package com.example.android.moveit.file_related;
 
-import android.app.ProgressDialog;
-import android.content.Context;
 import android.os.Environment;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.example.android.moveit.R;
 import com.example.android.moveit.utilities.M;
 import com.example.android.moveit.wifi_related.WifiP2pWrapper;
 
@@ -37,9 +34,6 @@ public class FileTasksWrapper {
     public static final int MAX_PROGRESS = 100;
     private static final int BYTE_BUFF = 1024;
     private static final String FOLDER_NAME = "MoveIt";
-
-    private static ProgressDialog progressDialog;
-
     //singleton object
     private static FileTasksWrapper instatnce;
     private File receiveFile;
@@ -48,6 +42,7 @@ public class FileTasksWrapper {
     private WifiP2pWrapper wifiP2pWrapper;
     private PublishSubject<FileStateObject> fileStateObjectPublishSubject;
     private boolean isFirstMetadataSent;
+
 
 
     private InetAddress receiverAddress;
@@ -71,6 +66,7 @@ public class FileTasksWrapper {
         instatnce.isFirstMetadataSent = false;
         return instatnce;
     }
+
 
 
     public void sendFile() {
@@ -221,10 +217,11 @@ public class FileTasksWrapper {
         try {
 
             if (outputStream != null) {
+                isFirstMetadataSent = true;
                 Output output = new Output(outputStream);
                 metaDataCryo.writeObject(output, fileStateObject);
                 fileStateObjectPublishSubject.onNext(fileStateObject);
-                isFirstMetadataSent = true;
+
                 output.close();
                 return true;
 
@@ -244,12 +241,13 @@ public class FileTasksWrapper {
     private boolean receiveMetaData(InputStream inputStream) {
         try {
             if (inputStream != null) {
+                isFirstMetadataSent = true;
                 fileStateObject = null;
                 Input input = new Input(inputStream);
                 fileStateObject = metaDataCryo.readObject(input, FileStateObject.class);
                 M.L("Inside FileTasksWrapper::receiveMetadata: File size-->" + fileStateObject.getSize());
                 fileStateObjectPublishSubject.onNext(fileStateObject);
-                isFirstMetadataSent = true;
+
                 input.close();
 
             } else {
@@ -275,9 +273,10 @@ public class FileTasksWrapper {
         long startTime = System.currentTimeMillis();
         while ((len = inputStream.read(buf)) != -1) {
             out.write(buf, 0, len);
-            fileStateObject.setTransferredBytes(fileStateObject.getTransferredBytes()+len);
-            int progress = (int) (fileStateObject.getTransferredBytes()/fileStateObject.getSize());
-            M.L("Inside FileTasksWrapper::copyStreamData : Progress : "+progress);
+            fileStateObject.addTranseferBytes(len);
+
+
+            M.L("Inside FileTasksWrapper::copyStreamData : Progress : "+fileStateObject.getTransferredBytes());
             fileStateObjectPublishSubject.onNext(fileStateObject);
         }
         long endTime = System.currentTimeMillis() - startTime;
@@ -309,31 +308,5 @@ public class FileTasksWrapper {
         return isFirstMetadataSent;
     }
 
-    public static void showProgressDialog(Context context,String message){
-        progressDialog = new ProgressDialog(context,ProgressDialog.STYLE_SPINNER);
-        progressDialog.setTitle(context.getString(R.string.transferring_file));
-        progressDialog.setMessage(message);
-        progressDialog.setMax(MAX_PROGRESS);
-        progressDialog.setIndeterminate(false);
-        progressDialog.setCancelable(false);
-        M.L("Inside FileTasksWrapper(Static method)::showProgressDialog.");
-        progressDialog.show();
-    }
 
-    public static void updateProgress(int progress){
-        if(progressDialog != null && progressDialog.isShowing()){
-            progressDialog.setProgress(progress);
-        }else{
-            M.L("Inside FileTasksWrapper(Static method):: update progress, progressDialog is null or not showing.");
-        }
-    }
-
-    public static void hideProgressDialog(Context context){
-        if(progressDialog.isShowing()){
-            M.L("Inside FileTasksWrapper(Static method)::showProgressDialog.");
-            progressDialog.dismiss();
-            M.T(context,context.getString(R.string.file_transfer_complete));
-        }
-
-    }
 }

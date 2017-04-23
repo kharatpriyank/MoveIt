@@ -130,6 +130,7 @@ public class WifiP2pWrapper {
             if (isDeviceInList) {
                 WifiP2pConfig wifiP2pConfig = new WifiP2pConfig();
                 wifiP2pConfig.deviceAddress = address;
+                wifiP2pConfig.groupOwnerIntent = 0;
                 wifiP2pManager.connect(wifiP2pChannel, wifiP2pConfig, new WifiP2pManager.ActionListener() {
                     @Override
                     public void onSuccess() {

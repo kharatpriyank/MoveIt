@@ -16,6 +16,8 @@
     <string name="low_storage_error">Low Storage Error</string>
     <string name="connection_status">Not connected</string>
     <string name="transferring_file">Transfering file...</string>
+    <string name="file_transfer_complete">File Transfer Complete!</string>
+    <string name="progress_bar_title">Transferring file.....</string>
 
 
 </resources>
