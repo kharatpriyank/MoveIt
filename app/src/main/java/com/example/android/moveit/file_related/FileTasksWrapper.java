@@ -275,7 +275,9 @@ public class FileTasksWrapper {
         long startTime = System.currentTimeMillis();
         while ((len = inputStream.read(buf)) != -1) {
             out.write(buf, 0, len);
-            fileStateObject.setProgress(fileStateObject.getProgress() + len);
+            fileStateObject.setTransferredBytes(fileStateObject.getTransferredBytes()+len);
+            int progress = (int) (fileStateObject.getTransferredBytes()/fileStateObject.getSize());
+            M.L("Inside FileTasksWrapper::copyStreamData : Progress : "+progress);
             fileStateObjectPublishSubject.onNext(fileStateObject);
         }
         long endTime = System.currentTimeMillis() - startTime;
@@ -326,10 +328,11 @@ public class FileTasksWrapper {
         }
     }
 
-    public static void hideProgressDialog(){
+    public static void hideProgressDialog(Context context){
         if(progressDialog.isShowing()){
             M.L("Inside FileTasksWrapper(Static method)::showProgressDialog.");
             progressDialog.dismiss();
+            M.T(context,context.getString(R.string.file_transfer_complete));
         }
 
     }
